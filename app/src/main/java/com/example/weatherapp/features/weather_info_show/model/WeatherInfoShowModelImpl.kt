@@ -5,8 +5,14 @@ import android.util.Log
 import com.example.weatherapp.common.RequestCompleteListener
 import com.example.weatherapp.features.weather_info_show.model.data_class.City
 import com.example.weatherapp.features.weather_info_show.model.data_class.WeatherDataModel
+import com.example.weatherapp.network.ApiInterface
+import com.example.weatherapp.network.RetrofitClient
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
+import com.hellohasan.weatherforecast.features.weather_info_show.model.data_class.WeatherInfoResponse
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import java.io.IOException
 
 class WeatherInfoShowModelImpl(
@@ -36,7 +42,24 @@ class WeatherInfoShowModelImpl(
         }
     }
 
-    override fun getWeatherInfo(cityId: Int, callback: RequestCompleteListener<WeatherDataModel>) {
-        TODO("Not yet implemented")
+
+    override fun getWeatherInfo(cityId: Int, callback: RequestCompleteListener<WeatherInfoResponse>) {
+        val apiInterface: ApiInterface = RetrofitClient.client.create(ApiInterface::class.java)
+        val call: Call<WeatherInfoResponse> = apiInterface.callAPIForWeatherData(cityId)
+
+        call.enqueue(object : Callback<WeatherInfoResponse> {
+
+            override fun onResponse(call: Call<WeatherInfoResponse>, response: Response<WeatherInfoResponse>) {
+                if (response.body() != null)
+                    callback.onSuccess(response.body()!!) //let presenter know the weather information data
+                else
+                    callback.onFailed(response.message()) //let presenter know about failure
+            }
+
+            override fun onFailure(call: Call<WeatherInfoResponse>, t: Throwable) {
+                callback.onFailed(t.localizedMessage!!) //let presenter know about failure
+            }
+
+        })
     }
 }
