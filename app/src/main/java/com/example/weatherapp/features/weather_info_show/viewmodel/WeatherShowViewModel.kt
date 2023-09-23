@@ -1,46 +1,44 @@
-package com.example.weatherapp.features.weather_info_show.presenter
+package com.example.weatherapp.features.weather_info_show.viewmodel
 
 import android.util.Log
-import android.view.View
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import com.example.weatherapp.common.RequestCompleteListener
 import com.example.weatherapp.features.weather_info_show.model.WeatherInfoShowModel
 import com.example.weatherapp.features.weather_info_show.model.data_class.City
 import com.example.weatherapp.features.weather_info_show.model.data_class.WeatherDataModel
-import com.example.weatherapp.features.weather_info_show.view.MainActivityView
 import com.example.weatherapp.utils.kelvinToCelsius
 import com.example.weatherapp.utils.unixTimestampToDateTimeString
 import com.example.weatherapp.utils.unixTimestampToTimeString
 import com.hellohasan.weatherforecast.features.weather_info_show.model.data_class.WeatherInfoResponse
 
-class WeatherShowPresenterImpl(
-    private var view:MainActivityView?,
-    private var model:WeatherInfoShowModel,
+class WeatherShowViewModel():ViewModel() {
 
-): WeatherShowPresenter {
-    override fun fetchCityList() {
+    val cityLiveData=MutableLiveData<MutableList<City>>()
+    val cityFailed =MutableLiveData<String>()
+    val weatherInfoLiveData=MutableLiveData<WeatherDataModel>()
+    val weatherFailed=MutableLiveData<String>()
+    val progressbarLivedata=MutableLiveData<Boolean>()
+     fun fetchCityList(model: WeatherInfoShowModel) {
         model.getCityList(object : RequestCompleteListener<MutableList<City>>{
             override fun onSuccess(data: MutableList<City>) {
-               view?.fetchSuccessCityData(data)
+                cityLiveData.postValue(data)
             }
             override fun onFailed(error: String) {
-                view?.fetchFailedCityData(error)
+                cityFailed.postValue(error)
             }
 
         })
     }
 
-    override fun fetchWeatherInfo(cityId: Int) {
-        view?.progressBar(View.VISIBLE) // let view know about progress bar visibility
+     fun fetchWeatherInfo(cityId: Int,model:WeatherInfoShowModel) {
+         progressbarLivedata.postValue(true)
 
-        // call model's method for weather information
         model.getWeatherInfo(cityId, object : RequestCompleteListener<WeatherInfoResponse> {
 
-            // if model successfully fetch the data from 'somewhere', this method will be called
             override fun onSuccess(data: WeatherInfoResponse) {
                 Log.d("DATA",data.toString())
-                view?.progressBar(View.GONE) // let view know about progress bar visibility
-
-                // data formatting to show on UI
+                progressbarLivedata.postValue(false)
                 val weatherDataModel = WeatherDataModel(
                     dateTime = data.dt.unixTimestampToDateTimeString(),
                     temperature = data.main.temp.kelvinToCelsius().toString(),
@@ -54,14 +52,13 @@ class WeatherShowPresenterImpl(
                     sunset = data.sys.sunset.unixTimestampToTimeString()
                 )
 
-                view?.fetchSuccessWeatherInfo(weatherDataModel) //let view know the formatted weather data
+            weatherInfoLiveData.postValue(weatherDataModel)
             }
 
-            // if model failed to fetch data then this method will be called
             override fun onFailed(errorMessage: String) {
-                view?.progressBar(View.GONE) // let view know about progress bar visibility
-
-                view?.fetchFailedWeatherInfo(errorMessage) //let view know about failure
+                progressbarLivedata.postValue(false)
+//
+                weatherFailed.postValue(errorMessage)
             }
         })
     }

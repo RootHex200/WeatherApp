@@ -1,6 +1,5 @@
-package com.example.weatherapp
+package com.example.weatherapp.features.weather_info_show.view
 
-import android.opengl.Visibility
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -12,26 +11,26 @@ import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProviders
+import com.example.weatherapp.R
 import com.example.weatherapp.features.weather_info_show.model.WeatherInfoShowModel
 import com.example.weatherapp.features.weather_info_show.model.WeatherInfoShowModelImpl
 import com.example.weatherapp.features.weather_info_show.model.data_class.City
 import com.example.weatherapp.features.weather_info_show.model.data_class.WeatherDataModel
-import com.example.weatherapp.features.weather_info_show.presenter.WeatherShowPresenter
-import com.example.weatherapp.features.weather_info_show.presenter.WeatherShowPresenterImpl
-import com.example.weatherapp.features.weather_info_show.view.MainActivityView
+import com.example.weatherapp.features.weather_info_show.viewmodel.WeatherShowViewModel
 import com.example.weatherapp.utils.convertListCityNames
-import org.w3c.dom.Text
 
-class MainActivity : AppCompatActivity(),MainActivityView {
+class MainActivity : AppCompatActivity() {
     lateinit var weatherbutton:Button
     lateinit var spinner:Spinner
     private lateinit var model:WeatherInfoShowModel
-    private lateinit var presenter:WeatherShowPresenter
     lateinit var  cityList:MutableList<City>
     lateinit var basic_show_view:LinearLayout
     lateinit var sunrise_sunset_view:LinearLayout
     lateinit var progressbar:ProgressBar
     lateinit var errorMessage:TextView
+    lateinit var viewmodel:WeatherShowViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -44,28 +43,67 @@ class MainActivity : AppCompatActivity(),MainActivityView {
 
 
         model=WeatherInfoShowModelImpl(this)
-        presenter=WeatherShowPresenterImpl(this,model)
+        viewmodel= ViewModelProviders.of(this).get(WeatherShowViewModel::class.java)
 
-        presenter.fetchCityList()
+        viewmodel.fetchCityList(model)
 
 
         weatherbutton.setOnClickListener {
-            basic_show_view.visibility=View.GONE
-            sunrise_sunset_view.visibility=View.GONE
 
             var cityId:Int = cityList[spinner.selectedItemPosition].id
 
-            presenter.fetchWeatherInfo(cityId)
+            viewmodel.fetchWeatherInfo(cityId,model)
 
         }
 
+
+        setLiveDataListener()
+
     }
 
-    override fun progressBar(visibility: Int) {
-        progressbar.visibility=visibility
+    fun setLiveDataListener(){
+        viewmodel.cityLiveData.observe(this,object:Observer<MutableList<City>>{
+            override fun onChanged(t: MutableList<City>) {
+                fetchSuccessCityData(t)
+            }
+
+        })
+
+
+        viewmodel.progressbarLivedata.observe(this,object :Observer<Boolean>{
+            override fun onChanged(t: Boolean) {
+                if(t==true){
+                    progressbar.visibility=View.VISIBLE
+                }else{
+                    progressbar.visibility=View.GONE
+                }
+            }
+
+        })
+
+        viewmodel.weatherInfoLiveData.observe(this,object :Observer<WeatherDataModel>{
+            override fun onChanged(t: WeatherDataModel) {
+                fetchSuccessWeatherInfo(t)
+            }
+
+        })
+
+        viewmodel.weatherFailed.observe(this,object:Observer<String>{
+            override fun onChanged(t: String) {
+                fetchFailedWeatherInfo(t)
+            }
+
+        })
+        viewmodel.cityFailed.observe(this,object:Observer<String>{
+            override fun onChanged(t: String) {
+                fetchFailedCityData(t)
+            }
+
+        })
+
     }
 
-    override fun fetchSuccessWeatherInfo(data: WeatherDataModel) {
+     fun fetchSuccessWeatherInfo(data: WeatherDataModel) {
         Log.d("MainActivity",""+data)
         basic_show_view.visibility=View.VISIBLE
         sunrise_sunset_view.visibility=View.VISIBLE
@@ -84,13 +122,13 @@ class MainActivity : AppCompatActivity(),MainActivityView {
         value_sunset.text=data.sunset
     }
 
-    override fun fetchFailedWeatherInfo(error: String) {
+     fun fetchFailedWeatherInfo(error: String) {
         errorMessage.visibility=View.VISIBLE
         errorMessage.text=error.toString()
 
     }
 
-    override fun fetchSuccessCityData(data: MutableList<City>) {
+     fun fetchSuccessCityData(data: MutableList<City>) {
         this.cityList=data
      var adapter=ArrayAdapter(
             this,
@@ -101,7 +139,7 @@ class MainActivity : AppCompatActivity(),MainActivityView {
         spinner.adapter=adapter
     }
 
-    override fun fetchFailedCityData(error: String) {
+     fun fetchFailedCityData(error: String) {
         Toast.makeText(applicationContext,error.toString(),Toast.LENGTH_LONG).show();
     }
 }
