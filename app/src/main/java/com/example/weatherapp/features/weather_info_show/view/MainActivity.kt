@@ -1,5 +1,6 @@
 package com.example.weatherapp.features.weather_info_show.view
 
+import android.annotation.SuppressLint
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -20,6 +21,8 @@ import com.example.weatherapp.features.weather_info_show.model.data_class.City
 import com.example.weatherapp.features.weather_info_show.model.data_class.WeatherDataModel
 import com.example.weatherapp.features.weather_info_show.viewmodel.WeatherShowViewModel
 import com.example.weatherapp.utils.convertListCityNames
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.kotlin.subscribeBy
 
 class MainActivity : AppCompatActivity() {
     lateinit var weatherbutton:Button
@@ -50,7 +53,7 @@ class MainActivity : AppCompatActivity() {
 
         weatherbutton.setOnClickListener {
 
-            var cityId:Int = cityList[spinner.selectedItemPosition].id
+            val cityId:Int = cityList[spinner.selectedItemPosition].id
 
             viewmodel.fetchWeatherInfo(cityId,model)
 
@@ -61,49 +64,49 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    @SuppressLint("CheckResult")
     fun setLiveDataListener(){
-        viewmodel.cityLiveData.observe(this,object:Observer<MutableList<City>>{
-            override fun onChanged(t: MutableList<City>) {
-                fetchSuccessCityData(t)
-            }
+        viewmodel.cityRxData.subscribeBy(
+            onNext = {
+                data->
+                    fetchSuccessCityData(data)
 
-        })
+            },
+        )
 
-
-        viewmodel.progressbarLivedata.observe(this,object :Observer<Boolean>{
-            override fun onChanged(t: Boolean) {
+        viewmodel.progressbarRxData.subscribeBy(
+            onNext = {
+                t->
                 if(t==true){
                     progressbar.visibility=View.VISIBLE
                 }else{
                     progressbar.visibility=View.GONE
                 }
             }
+        )
 
-        })
-
-        viewmodel.weatherInfoLiveData.observe(this,object :Observer<WeatherDataModel>{
-            override fun onChanged(t: WeatherDataModel) {
-                fetchSuccessWeatherInfo(t)
+        viewmodel.weatherInfoRxData.subscribeBy(
+            onNext = {
+                t->fetchSuccessWeatherInfo(t)
             }
+        )
 
-        })
-
-        viewmodel.weatherFailed.observe(this,object:Observer<String>{
-            override fun onChanged(t: String) {
-                fetchFailedWeatherInfo(t)
+        viewmodel.weatherFailedRxData.subscribeBy(
+            onNext = {
+                t->fetchFailedWeatherInfo(t)
             }
+        )
 
-        })
-        viewmodel.cityFailed.observe(this,object:Observer<String>{
-            override fun onChanged(t: String) {
-                fetchFailedCityData(t)
+        viewmodel.cityRxFailed.subscribeBy(
+            onNext = {
+                t->  fetchFailedCityData(t)
             }
+        )
 
-        })
 
     }
 
-     fun fetchSuccessWeatherInfo(data: WeatherDataModel) {
+     private fun fetchSuccessWeatherInfo(data: WeatherDataModel) {
         Log.d("MainActivity",""+data)
         basic_show_view.visibility=View.VISIBLE
         sunrise_sunset_view.visibility=View.VISIBLE
@@ -122,15 +125,15 @@ class MainActivity : AppCompatActivity() {
         value_sunset.text=data.sunset
     }
 
-     fun fetchFailedWeatherInfo(error: String) {
+     private fun fetchFailedWeatherInfo(error: String) {
         errorMessage.visibility=View.VISIBLE
         errorMessage.text=error.toString()
 
     }
 
-     fun fetchSuccessCityData(data: MutableList<City>) {
+     private fun fetchSuccessCityData(data: MutableList<City>) {
         this.cityList=data
-     var adapter=ArrayAdapter(
+     val adapter=ArrayAdapter(
             this,
             androidx.appcompat.R.layout.support_simple_spinner_dropdown_item,
             data.convertListCityNames()
@@ -139,7 +142,7 @@ class MainActivity : AppCompatActivity() {
         spinner.adapter=adapter
     }
 
-     fun fetchFailedCityData(error: String) {
+     private fun fetchFailedCityData(error: String) {
         Toast.makeText(applicationContext,error.toString(),Toast.LENGTH_LONG).show();
     }
 }

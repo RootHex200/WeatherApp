@@ -1,7 +1,6 @@
 package com.example.weatherapp.features.weather_info_show.viewmodel
 
-import android.util.Log
-import androidx.lifecycle.MutableLiveData
+
 import androidx.lifecycle.ViewModel
 import com.example.weatherapp.common.RequestCompleteListener
 import com.example.weatherapp.features.weather_info_show.model.WeatherInfoShowModel
@@ -11,34 +10,35 @@ import com.example.weatherapp.utils.kelvinToCelsius
 import com.example.weatherapp.utils.unixTimestampToDateTimeString
 import com.example.weatherapp.utils.unixTimestampToTimeString
 import com.hellohasan.weatherforecast.features.weather_info_show.model.data_class.WeatherInfoResponse
+import io.reactivex.rxjava3.subjects.BehaviorSubject
 
 class WeatherShowViewModel():ViewModel() {
 
-    val cityLiveData=MutableLiveData<MutableList<City>>()
-    val cityFailed =MutableLiveData<String>()
-    val weatherInfoLiveData=MutableLiveData<WeatherDataModel>()
-    val weatherFailed=MutableLiveData<String>()
-    val progressbarLivedata=MutableLiveData<Boolean>()
+    val cityRxData =BehaviorSubject.create<MutableList<City>>()
+    val cityRxFailed=BehaviorSubject.create<String>()
+    val weatherInfoRxData=BehaviorSubject.create<WeatherDataModel>()
+    val weatherFailedRxData=BehaviorSubject.create<String>()
+    val progressbarRxData=BehaviorSubject.create<Boolean>()
+
      fun fetchCityList(model: WeatherInfoShowModel) {
         model.getCityList(object : RequestCompleteListener<MutableList<City>>{
             override fun onSuccess(data: MutableList<City>) {
-                cityLiveData.postValue(data)
+                cityRxData.onNext(data)
             }
             override fun onFailed(error: String) {
-                cityFailed.postValue(error)
+                cityRxFailed.onNext(error)
             }
 
         })
     }
 
      fun fetchWeatherInfo(cityId: Int,model:WeatherInfoShowModel) {
-         progressbarLivedata.postValue(true)
+         progressbarRxData.onNext(true)
 
         model.getWeatherInfo(cityId, object : RequestCompleteListener<WeatherInfoResponse> {
 
             override fun onSuccess(data: WeatherInfoResponse) {
-                Log.d("DATA",data.toString())
-                progressbarLivedata.postValue(false)
+                progressbarRxData.onNext(false)
                 val weatherDataModel = WeatherDataModel(
                     dateTime = data.dt.unixTimestampToDateTimeString(),
                     temperature = data.main.temp.kelvinToCelsius().toString(),
@@ -52,13 +52,12 @@ class WeatherShowViewModel():ViewModel() {
                     sunset = data.sys.sunset.unixTimestampToTimeString()
                 )
 
-            weatherInfoLiveData.postValue(weatherDataModel)
+                weatherInfoRxData.onNext(weatherDataModel)
             }
 
-            override fun onFailed(errorMessage: String) {
-                progressbarLivedata.postValue(false)
-//
-                weatherFailed.postValue(errorMessage)
+            override fun onFailed(error: String) {
+                progressbarRxData.onNext(false)
+                weatherFailedRxData.onNext(error)
             }
         })
     }
